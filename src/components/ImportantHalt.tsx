@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 const ImportantHalt = () => {
   const buttons = [
     { label: 'Dashboard', path: '/dashboard' },
-    { label: 'Vendor to Warehouse', path: '/VendorToWarehouse' },
+    { label: 'Vendor to Warehouse', path: '/VenderToWarehousePage' },
     { label: 'Warehouse to Store', path: '/WarehouseToStore' },
     { label: 'Store to Customer', path: '/StoreToCustomer' },
     { label: 'Feedback & Help', path: '/Feedback' },

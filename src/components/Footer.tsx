@@ -7,10 +7,10 @@ const Footer = () => {
         {/* Column 1 */}
         <div>
             
-            <p className="w-full md:w-1/3 text-gray-600">
+            <div className="w-full md:w-1/3 text-gray-600">
             <h1>GREENEDGE</h1>
             dummy text... check its properties. So much fun making websites.
-            </p>
+            </div>
         </div>
 
         {/* Column 2 */}
