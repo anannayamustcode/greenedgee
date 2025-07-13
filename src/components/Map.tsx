@@ -31,7 +31,19 @@ const userIcon = new L.Icon({
   shadowSize: [41, 41]
 });
 
-const WarehouseToStore = () => {
+type WarehouseToStoreProps = {
+  startLabel?: string;
+  endLabel?: string;
+  startColor?: string;
+  endColor?: string;
+};
+
+const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
+  startLabel = "Warehouse",
+  endLabel = "Store",
+  startColor = "text-blue-600",
+  endColor = "text-red-600"
+}) => {
   // State management
   const [startCoords, setStartCoords] = useState<[number, number] | null>(null);
   const [endCoords, setEndCoords] = useState<[number, number] | null>(null);
@@ -310,15 +322,15 @@ const WarehouseToStore = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="mt-15 min-h-screen bg-gray-100">
       <div className="container mx-auto px-4 py-6">
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Sidebar */}
           <div className="w-full lg:w-96 bg-white rounded-xl shadow-md overflow-hidden">
             <div className="p-6">
               <h1 className="text-2xl font-bold text-gray-800 mb-6">
-                <span className="text-blue-600">Warehouse</span> to <span className="text-red-600">Store</span> Navigation
-              </h1>
+  <span className={startColor}>{startLabel}</span> to <span className={endColor}>{endLabel}</span> Navigation
+</h1>
               
               {error && (
                 <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded">
@@ -547,6 +559,8 @@ const WarehouseToStore = () => {
 
 export default WarehouseToStore;
 
+
+// import React from 'react';
 // import React, { useState, useEffect, useRef, useCallback } from 'react';
 // import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 // import L from 'leaflet';
