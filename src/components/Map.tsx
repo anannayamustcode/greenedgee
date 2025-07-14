@@ -65,9 +65,13 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
   const [activeInstruction, setActiveInstruction] = useState<number>(0);
   const [betterRouteAvailable, setBetterRouteAvailable] = useState(false);
   const [proposedRoute, setProposedRoute] = useState<[number, number][] | null>(null);
-  const [proposedStats, setProposedStats] = useState<{distance: number, duration: number, co2: number} | null>(null);
+  const [proposedStats, setProposedStats] = useState<{ distance: number, duration: number, co2: number } | null>(null);
   const [socketConnected, setSocketConnected] = useState(false);
-  
+  const [vehicleType, setVehicleType] = useState("truck");
+  const [fuelType, setFuelType] = useState("diesel");
+  const [loadKg, setLoadKg] = useState(1500);
+
+
   const mapRef = useRef<any>(null);
   const watchIdRef = useRef<number | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
@@ -88,11 +92,11 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
     const R = 6371; // Earth radius in km
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   };
 
@@ -100,7 +104,7 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
   const calculateRouteDistance = (route: [number, number][]): number => {
     let total = 0;
     for (let i = 0; i < route.length - 1; i++) {
-      total += calculateDistance(route[i], route[i+1]);
+      total += calculateDistance(route[i], route[i + 1]);
     }
     return total;
   };
@@ -115,74 +119,91 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
   // Generate a realistic alternative route (dummy implementation)
   const generateAlternativeRoute = (currentRoute: [number, number][]): [number, number][] => {
     if (currentRoute.length < 2) return currentRoute;
-    
+
     // Create a modified version of the route
     const alternative: [number, number][] = [];
     const midPoint = Math.floor(currentRoute.length / 2);
-    
+
     // First half stays the same
     for (let i = 0; i < midPoint; i++) {
       alternative.push([...currentRoute[i]]);
     }
-    
+
     // Create a detour in the middle
     const detourStrength = 0.003 * (Math.random() * 2 - 1); // Small random variation
-    
+
     for (let i = midPoint; i < currentRoute.length; i++) {
       alternative.push([
         currentRoute[i][0] + detourStrength,
         currentRoute[i][1] + detourStrength
       ]);
     }
-    
+
     return alternative;
   };
 
-  // Get route from OSRM
   const getRoute = useCallback(async (start: [number, number], end: [number, number]) => {
     try {
       setIsLoading(true);
-      const response = await fetch(
-        `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?overview=full&geometries=geojson&steps=true`
-      );
+
+      const response = await fetch('http://localhost:5001/optimize-route', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          start_lat: start[0],
+          start_lon: start[1],
+          end_lat: end[0],
+          end_lon: end[1],
+          vehicle_type: vehicleType,
+          fuel_type: fuelType,
+          load_kg: loadKg
+        })
+
+      });
+
       const data = await response.json();
-      
-      if (data.code !== 'Ok') {
-        throw new Error('Could not calculate route');
+
+      if (data.status !== 'success' || !data.route_waypoints) {
+        throw new Error("Route data unavailable");
       }
 
-      const routeGeometry = data.routes[0].geometry.coordinates.map((coord: [number, number]) => [coord[1], coord[0]]);
-      const routeDistance = data.routes[0].distance / 1000; // Convert to km
-      const routeDuration = data.routes[0].duration / 60; // Convert to minutes
-      
+      // Extract lat/lon pairs for the polyline
+      const routeGeometry: [number, number][] = data.route_waypoints.map((wp: any) => [wp.lat, wp.lon]);
+
+      // Extract metrics from optimization_summary
+      const summary = data.optimization_summary;
+      const routeDistance = summary.total_distance_km || calculateRouteDistance(routeGeometry);
+      const routeDuration = summary.total_estimated_time_minutes || (routeDistance * 1.5); // fallback
+      const co2 = summary.total_co2_emissions_kg || calculateCO2(routeDistance);
+
       setRoute(routeGeometry);
       setDistance(routeDistance);
       setDuration(routeDuration);
-      setCo2Emission(calculateCO2(routeDistance));
-      setRouteInstructions(data.routes[0].legs[0].steps);
-      
-      // Callback with route data if provided
+      setCo2Emission(co2);
+      setRouteInstructions([]); // Optional: could convert segment_details into steps if desired
+
+      // Callback with route data if needed
       if (onRouteCalculated) {
         onRouteCalculated({
           geometry: routeGeometry,
           distance: routeDistance,
           duration: routeDuration,
-          co2: calculateCO2(routeDistance),
-          steps: data.routes[0].legs[0].steps
+          co2: co2,
+          steps: [] // optional: build from segment_details
         });
       }
-      
+
       return routeGeometry;
+
     } catch (err) {
-      console.error('Routing error:', err);
-      // Fallback to straight line with waypoints
-      const fallbackRoute = [start, end];
+      console.error("Error fetching route from backend:", err);
+      const fallback = [start, end];
       const fallbackDistance = calculateDistance(start, end);
-      setRoute(fallbackRoute);
+      setRoute(fallback);
       setDistance(fallbackDistance);
-      setDuration(fallbackDistance * 1.5); // Estimate 1.5 min per km
+      setDuration(fallbackDistance * 1.5);
       setCo2Emission(calculateCO2(fallbackDistance));
-      return fallbackRoute;
+      return fallback;
     } finally {
       setIsLoading(false);
     }
@@ -194,14 +215,14 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
       // In a real implementation, this would connect to your WebSocket server
       // For now, we'll simulate the connection
       setSocketConnected(true);
-      
+
       // Simulate receiving a better route after 5 seconds
       setTimeout(() => {
         if (isNavigating && route.length > 0) {
           const alternativeRoute = generateAlternativeRoute(route);
           const currentDistance = calculateRouteDistance(route);
           const newDistance = calculateRouteDistance(alternativeRoute);
-          
+
           // Only suggest if at least 5% better
           if (newDistance < currentDistance * 0.95) {
             setProposedRoute(alternativeRoute);
@@ -225,28 +246,28 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
     try {
       const startInput = (document.getElementById('start-coords') as HTMLInputElement)?.value;
       const endInput = (document.getElementById('end-coords') as HTMLInputElement)?.value;
-      
+
       let start = startCoords;
       let end = endCoords;
-      
+
       if (startInput && endInput) {
         start = parseCoordinates(startInput);
         end = parseCoordinates(endInput);
       } else if (!start || !end) {
         throw new Error('Coordinates are required');
       }
-      
+
       setStartCoords(start);
       setEndCoords(end);
       setError(null);
       setIsLoading(true);
-      
+
       // Calculate initial route
       await getRoute(start, end);
-      
+
       setIsNavigating(true);
       connectToModel();
-      
+
       // Start watching user's position
       if (navigator.geolocation) {
         watchIdRef.current = navigator.geolocation.watchPosition(
@@ -256,15 +277,15 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
               position.coords.longitude
             ];
             setCurrentPosition(userPos);
-            
+
             // Update active instruction
             if (route.length > 0 && routeInstructions.length > 0) {
               let closestPointIndex = 0;
               let minDistance = Infinity;
-              
+
               route.forEach((point, index) => {
                 const dist = Math.sqrt(
-                  Math.pow(point[0] - userPos[0], 2) + 
+                  Math.pow(point[0] - userPos[0], 2) +
                   Math.pow(point[1] - userPos[1], 2)
                 );
                 if (dist < minDistance) {
@@ -272,7 +293,7 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
                   closestPointIndex = index;
                 }
               });
-              
+
               const progress = closestPointIndex / route.length;
               const activeIndex = Math.floor(progress * routeInstructions.length);
               setActiveInstruction(activeIndex);
@@ -364,14 +385,60 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
               <h1 className="text-2xl font-bold text-gray-800 mb-6">
                 <span className={startColor}>{startLabel}</span> to <span className={endColor}>{endLabel}</span> Navigation
               </h1>
-              
+
               {error && (
                 <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded">
                   <p>{error}</p>
                 </div>
               )}
-              
+
               <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Vehicle Type
+                  </label>
+                  <select
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    value={vehicleType}
+                    onChange={(e) => setVehicleType(e.target.value)}
+                    disabled={isNavigating || isLoading}
+                  >
+                    <option value="truck">Truck</option>
+                    <option value="van">Van</option>
+                    <option value="bike">Bike</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Fuel Type
+                  </label>
+                  <select
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    value={fuelType}
+                    onChange={(e) => setFuelType(e.target.value)}
+                    disabled={isNavigating || isLoading}
+                  >
+                    <option value="diesel">Diesel</option>
+                    <option value="petrol">Petrol</option>
+                    <option value="electric">Electric</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Load Weight (kg)
+                  </label>
+                  <input
+                    type="number"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    value={loadKg}
+                    onChange={(e) => setLoadKg(parseFloat(e.target.value))}
+                    disabled={isNavigating || isLoading}
+                    placeholder="e.g., 1500"
+                  />
+                </div>
+
                 {!initialStartCoords && (
                   <div>
                     <label htmlFor="start-coords" className="block text-sm font-medium text-gray-700 mb-1">
@@ -386,7 +453,7 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
                     />
                   </div>
                 )}
-                
+
                 {!initialEndCoords && (
                   <div>
                     <label htmlFor="end-coords" className="block text-sm font-medium text-gray-700 mb-1">
@@ -401,7 +468,7 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
                     />
                   </div>
                 )}
-                
+
                 {!isNavigating ? (
                   <button
                     onClick={startNavigation}
@@ -427,7 +494,7 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
                   </button>
                 )}
               </div>
-              
+
               {(isNavigating || isLoading) && (
                 <div className="mt-6 space-y-4">
                   <div className="bg-blue-50 p-4 rounded-lg">
@@ -447,22 +514,22 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
                       </div>
                     </div>
                   </div>
-                  
+
                   {routeInstructions.length > 0 && (
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <h3 className="text-lg font-semibold text-gray-800 mb-2">Next Steps</h3>
                       <div className="space-y-2 max-h-60 overflow-y-auto">
                         {routeInstructions.map((step: any, index: number) => (
-                          <div 
-                            key={index} 
+                          <div
+                            key={index}
                             className={`p-3 rounded ${index === activeInstruction ? 'bg-blue-100 border-l-4 border-blue-500' : 'bg-white'}`}
                           >
                             <p className={`font-medium ${index === activeInstruction ? 'text-blue-800' : 'text-gray-700'}`}>
                               {step.maneuver.instruction}
                             </p>
                             <p className="text-sm text-gray-500">
-                              {step.distance > 1000 
-                                ? `${(step.distance / 1000).toFixed(1)} km` 
+                              {step.distance > 1000
+                                ? `${(step.distance / 1000).toFixed(1)} km`
                                 : `${Math.round(step.distance)} m`}
                             </p>
                           </div>
@@ -470,7 +537,7 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
                       </div>
                     </div>
                   )}
-                  
+
                   {currentPosition && (
                     <div className="bg-green-50 p-4 rounded-lg">
                       <h3 className="text-lg font-semibold text-green-800 mb-2">Current Position</h3>
@@ -483,7 +550,7 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
               )}
             </div>
           </div>
-          
+
           {/* Map Area */}
           <div className="flex-1">
             <div className="bg-white rounded-xl shadow-md overflow-hidden h-full">
@@ -499,28 +566,28 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                   />
-                  
+
                   {startCoords && (
                     <Marker position={startCoords} icon={warehouseIcon}>
                       <Popup className="font-semibold">{startLabel} Location</Popup>
                     </Marker>
                   )}
-                  
+
                   {endCoords && (
                     <Marker position={endCoords} icon={storeIcon}>
                       <Popup className="font-semibold">{endLabel} Location</Popup>
                     </Marker>
                   )}
-                  
+
                   {currentPosition && (
                     <Marker position={currentPosition} icon={userIcon}>
                       <Popup className="font-semibold">Your Location</Popup>
                     </Marker>
                   )}
-                  
+
                   {route.length > 0 && (
-                    <Polyline 
-                      positions={route} 
+                    <Polyline
+                      positions={route}
                       pathOptions={{
                         color: '#3b82f6',
                         weight: 5,
@@ -528,10 +595,10 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
                       }}
                     />
                   )}
-                  
+
                   {proposedRoute && (
-                    <Polyline 
-                      positions={proposedRoute} 
+                    <Polyline
+                      positions={proposedRoute}
                       pathOptions={{
                         color: '#10B981',
                         weight: 5,
@@ -540,13 +607,27 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
                       }}
                     />
                   )}
+                  {route.length > 0 && route.map((coords, index) => (
+                    <Marker
+                      key={`wp-${index}`}
+                      position={coords}
+                      icon={L.divIcon({
+                        className: 'waypoint-marker',
+                        html: `<div style="width: 10px; height: 10px; background-color: #10b981; border-radius: 50%; border: 2px solid white;"></div>`,
+                        iconSize: [12, 12],
+                        iconAnchor: [6, 6],
+                      })}
+                    />
+                  ))}
+
                 </MapContainer>
+
               )}
             </div>
           </div>
         </div>
       </div>
-      
+
       {betterRouteAvailable && proposedStats && (
         <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md">
           <div className="bg-white p-4 rounded-xl shadow-xl border-2 border-blue-400">
@@ -575,13 +656,13 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
               </div>
             </div>
             <div className="flex gap-2">
-              <button 
+              <button
                 onClick={rejectNewRoute}
                 className="flex-1 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg"
               >
                 Keep Current
               </button>
-              <button 
+              <button
                 onClick={acceptNewRoute}
                 className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
               >
