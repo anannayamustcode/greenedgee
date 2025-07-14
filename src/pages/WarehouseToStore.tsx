@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Package, 
   TrendingUp, 
@@ -23,11 +23,79 @@ import {
   XCircle
 } from 'lucide-react';
 
+const API_BASE_URL = "http://localhost:5001"; // Your Flask backend
+
 const VendorWarehouseManagement = () => {
   const [activeTab, setActiveTab] = useState('inventory');
   const [selectedItem, setSelectedItem] = useState(null);
   const [cart, setCart] = useState([]);
   const [showOrderForm, setShowOrderForm] = useState(false);
+
+  // ML-driven inventory
+  const [mlInventory, setMlInventory] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  // You can make these dynamic/selectable if you want
+  const storeId = 101;
+  const forecastDays = 30;
+  const minCategories = 10;
+
+  useEffect(() => {
+    const fetchMLInventory = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const response = await fetch(`${API_BASE_URL}/forecast`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            store_id: storeId,
+            forecast_days: forecastDays,
+            min_categories: minCategories
+          })
+        });
+        const data = await response.json();
+        if (response.ok && data.categories_to_restock) {
+          // Flatten items for inventory grid
+          const items = [];
+          data.categories_to_restock.forEach(cat => {
+            cat.items_to_order.forEach(item => {
+              items.push({
+                id: `${cat.category}-${item.item_name}`,
+                name: item.item_name,
+                category: cat.category,
+                currentStock: 0, // ML doesn't provide this, set as 0 or fetch from another source
+                minStock: 20,    // You can adjust these defaults
+                maxStock: 500,
+                pricePerUnit: 1.0,
+                vendor: "ML Model",
+                lastRestocked: "-",
+                expiryDate: "-",
+                image: "https://via.placeholder.com/100",
+                status: "Restock Recommended",
+                quantityToOrder: item.quantity_to_order,
+                priority: cat.priority,
+                stockoutRisk: cat.stockout_risk_percentage
+              });
+            });
+          });
+          setMlInventory(items);
+        } else {
+          setError(data.error || "No inventory data from ML model");
+        }
+      } catch (err) {
+        setError("Could not connect to ML model");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMLInventory();
+  }, [storeId, forecastDays, minCategories]);
+
+  // const [activeTab, setActiveTab] = useState('inventory');
+  // const [selectedItem, setSelectedItem] = useState<any[]>([]);
+  // const [cart, setCart] = useState([]);
+  // const [showOrderForm, setShowOrderForm] = useState(false);
 
   // Mock data
   const inventoryData = [
@@ -181,7 +249,7 @@ const VendorWarehouseManagement = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-blue-800 mb-2">Vendor to Warehouse Management</h1>
+          <h1 className="text-4xl font-bold text-blue-800 mb-2"> Warehouse to Store Management</h1>
           <p className="text-blue-600">Streamline your inventory and supplier operations</p>
         </div>
 
@@ -219,64 +287,46 @@ const VendorWarehouseManagement = () => {
             </div>
 
             {/* Inventory Grid */}
-            <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-6">
-              {inventoryData.map(item => {
-                const stockStatus = getStockStatus(item);
-                return (
+            {loading ? (
+              <div className="text-center text-blue-600 py-8">Loading inventory...</div>
+            ) : error ? (
+              <div className="text-center text-red-600 py-8">{error}</div>
+            ) : (
+              <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                {mlInventory.map(item => (
                   <div key={item.id} className="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
                     <div className="flex items-start justify-between mb-4">
                       <img src={item.image} alt={item.name} className="w-16 h-16 object-cover rounded-lg" />
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${stockStatus.bgColor} ${stockStatus.color}`}>
-                        {stockStatus.status}
+                      <span className="px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                        {item.status}
                       </span>
                     </div>
-                    
                     <h3 className="text-lg font-bold text-blue-800 mb-2">{item.name}</h3>
                     <p className="text-blue-600 text-sm mb-4">{item.category}</p>
-                    
                     <div className="space-y-2 mb-4">
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Current Stock:</span>
-                        <span className="font-medium text-blue-800">{item.currentStock}</span>
+                        <span className="text-gray-600">Recommended Qty:</span>
+                        <span className="font-medium text-blue-800">{item.quantityToOrder}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Price/Unit:</span>
-                        <span className="font-medium text-green-600">${item.pricePerUnit}</span>
+                        <span className="text-gray-600">Priority:</span>
+                        <span className="font-medium text-blue-800">{item.priority}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Vendor:</span>
-                        <span className="font-medium text-blue-800">{item.vendor}</span>
+                        <span className="text-gray-600">Stockout Risk:</span>
+                        <span className="font-medium text-red-600">{item.stockoutRisk}%</span>
                       </div>
                     </div>
-
-                    {/* Stock Level Bar */}
-                    <div className="mb-4">
-                      <div className="flex justify-between text-sm text-gray-600 mb-1">
-                        <span>Stock Level</span>
-                        <span>{item.currentStock}/{item.maxStock}</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className={`h-2 rounded-full ${
-                            item.currentStock === 0 ? 'bg-red-500' :
-                            item.currentStock <= item.minStock ? 'bg-yellow-500' : 'bg-green-500'
-                          }`}
-                          style={{ width: `${(item.currentStock / item.maxStock) * 100}%` }}
-                        ></div>
-                      </div>
-                    </div>
-
-                    <button 
+                    <button
                       onClick={() => setSelectedItem(item)}
-                      className="w-full bg-blue-600 text-white py-2 rounded-lg hover:from-blue-700 hover:to-yellow-600 transition-all font-medium flex items-center justify-center"
+                      className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-all font-medium flex items-center justify-center"
                     >
-                      {/* <Eye className="w-4 h-4 mr-2" /> */}
                       View Details
                     </button>
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
