@@ -36,17 +36,23 @@ type WarehouseToStoreProps = {
   endLabel?: string;
   startColor?: string;
   endColor?: string;
+  startCoords?: [number, number];
+  endCoords?: [number, number];
+  onRouteCalculated?: (route: any) => void;
 };
 
 const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
   startLabel = "Warehouse",
   endLabel = "Store",
   startColor = "text-blue-600",
-  endColor = "text-red-600"
+  endColor = "text-red-600",
+  startCoords: initialStartCoords,
+  endCoords: initialEndCoords,
+  onRouteCalculated
 }) => {
   // State management
-  const [startCoords, setStartCoords] = useState<[number, number] | null>(null);
-  const [endCoords, setEndCoords] = useState<[number, number] | null>(null);
+  const [startCoords, setStartCoords] = useState<[number, number] | null>(initialStartCoords || null);
+  const [endCoords, setEndCoords] = useState<[number, number] | null>(initialEndCoords || null);
   const [isNavigating, setIsNavigating] = useState(false);
   const [currentPosition, setCurrentPosition] = useState<[number, number] | null>(null);
   const [route, setRoute] = useState<[number, number][]>([]);
@@ -155,6 +161,17 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
       setCo2Emission(calculateCO2(routeDistance));
       setRouteInstructions(data.routes[0].legs[0].steps);
       
+      // Callback with route data if provided
+      if (onRouteCalculated) {
+        onRouteCalculated({
+          geometry: routeGeometry,
+          distance: routeDistance,
+          duration: routeDuration,
+          co2: calculateCO2(routeDistance),
+          steps: data.routes[0].legs[0].steps
+        });
+      }
+      
       return routeGeometry;
     } catch (err) {
       console.error('Routing error:', err);
@@ -169,7 +186,7 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [onRouteCalculated]);
 
   // Simulate WebSocket connection to ML model
   const connectToModel = useCallback(() => {
@@ -206,11 +223,18 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
   // Start navigation
   const startNavigation = async () => {
     try {
-      const startInput = (document.getElementById('start-coords') as HTMLInputElement).value;
-      const endInput = (document.getElementById('end-coords') as HTMLInputElement).value;
+      const startInput = (document.getElementById('start-coords') as HTMLInputElement)?.value;
+      const endInput = (document.getElementById('end-coords') as HTMLInputElement)?.value;
       
-      const start = parseCoordinates(startInput);
-      const end = parseCoordinates(endInput);
+      let start = startCoords;
+      let end = endCoords;
+      
+      if (startInput && endInput) {
+        start = parseCoordinates(startInput);
+        end = parseCoordinates(endInput);
+      } else if (!start || !end) {
+        throw new Error('Coordinates are required');
+      }
       
       setStartCoords(start);
       setEndCoords(end);
@@ -312,6 +336,15 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
     return `${hours}h ${mins}m`;
   };
 
+  // Initialize with props if provided
+  useEffect(() => {
+    if (initialStartCoords && initialEndCoords) {
+      setStartCoords(initialStartCoords);
+      setEndCoords(initialEndCoords);
+      getRoute(initialStartCoords, initialEndCoords);
+    }
+  }, [initialStartCoords, initialEndCoords, getRoute]);
+
   // Clean up on unmount
   useEffect(() => {
     return () => {
@@ -322,15 +355,15 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
   }, []);
 
   return (
-    <div className="mt-15 min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100">
       <div className="container mx-auto px-4 py-6">
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Sidebar */}
           <div className="w-full lg:w-96 bg-white rounded-xl shadow-md overflow-hidden">
             <div className="p-6">
               <h1 className="text-2xl font-bold text-gray-800 mb-6">
-  <span className={startColor}>{startLabel}</span> to <span className={endColor}>{endLabel}</span> Navigation
-</h1>
+                <span className={startColor}>{startLabel}</span> to <span className={endColor}>{endLabel}</span> Navigation
+              </h1>
               
               {error && (
                 <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded">
@@ -339,31 +372,35 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
               )}
               
               <div className="space-y-4">
-                <div>
-                  <label htmlFor="start-coords" className="block text-sm font-medium text-gray-700 mb-1">
-                    Warehouse Location (lat, lng)
-                  </label>
-                  <input
-                    id="start-coords"
-                    type="text"
-                    placeholder="e.g., 40.7128, -74.0060"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    disabled={isNavigating || isLoading}
-                  />
-                </div>
+                {!initialStartCoords && (
+                  <div>
+                    <label htmlFor="start-coords" className="block text-sm font-medium text-gray-700 mb-1">
+                      {startLabel} Location (lat, lng)
+                    </label>
+                    <input
+                      id="start-coords"
+                      type="text"
+                      placeholder="e.g., 40.7128, -74.0060"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      disabled={isNavigating || isLoading}
+                    />
+                  </div>
+                )}
                 
-                <div>
-                  <label htmlFor="end-coords" className="block text-sm font-medium text-gray-700 mb-1">
-                    Store Location (lat, lng)
-                  </label>
-                  <input
-                    id="end-coords"
-                    type="text"
-                    placeholder="e.g., 34.0522, -118.2437"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    disabled={isNavigating || isLoading}
-                  />
-                </div>
+                {!initialEndCoords && (
+                  <div>
+                    <label htmlFor="end-coords" className="block text-sm font-medium text-gray-700 mb-1">
+                      {endLabel} Location (lat, lng)
+                    </label>
+                    <input
+                      id="end-coords"
+                      type="text"
+                      placeholder="e.g., 34.0522, -118.2437"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      disabled={isNavigating || isLoading}
+                    />
+                  </div>
+                )}
                 
                 {!isNavigating ? (
                   <button
@@ -452,10 +489,11 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
             <div className="bg-white rounded-xl shadow-md overflow-hidden h-full">
               {typeof window !== 'undefined' && (
                 <MapContainer
-                  center={[40, -100]}
-                  zoom={4}
+                  center={startCoords || [40, -100]}
+                  zoom={startCoords ? 12 : 4}
                   style={{ height: '100%', width: '100%' }}
                   className="z-0"
+                  ref={mapRef}
                 >
                   <TileLayer
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -464,13 +502,13 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
                   
                   {startCoords && (
                     <Marker position={startCoords} icon={warehouseIcon}>
-                      <Popup className="font-semibold">Warehouse Location</Popup>
+                      <Popup className="font-semibold">{startLabel} Location</Popup>
                     </Marker>
                   )}
                   
                   {endCoords && (
                     <Marker position={endCoords} icon={storeIcon}>
-                      <Popup className="font-semibold">Store Location</Popup>
+                      <Popup className="font-semibold">{endLabel} Location</Popup>
                     </Marker>
                   )}
                   
@@ -558,381 +596,3 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
 };
 
 export default WarehouseToStore;
-
-
-// import React from 'react';
-// import React, { useState, useEffect, useRef, useCallback } from 'react';
-// import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
-// import L from 'leaflet';
-// import 'leaflet/dist/leaflet.css';
-// import RoutingMachine from './RoutingMachine'; // We'll create this component
-
-// // Custom icons
-// const warehouseIcon = new L.Icon({
-//   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-//   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-//   iconSize: [25, 41],
-//   iconAnchor: [12, 41],
-//   popupAnchor: [1, -34],
-//   shadowSize: [41, 41]
-// });
-
-// const storeIcon = new L.Icon({
-//   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-//   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-//   iconSize: [25, 41],
-//   iconAnchor: [12, 41],
-//   popupAnchor: [1, -34],
-//   shadowSize: [41, 41]
-// });
-
-// const userIcon = new L.Icon({
-//   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-//   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-//   iconSize: [25, 41],
-//   iconAnchor: [12, 41],
-//   popupAnchor: [1, -34],
-//   shadowSize: [41, 41]
-// });
-
-// const WarehouseToStore = () => {
-//   // State management
-//   const [startCoords, setStartCoords] = useState<[number, number] | null>(null);
-//   const [endCoords, setEndCoords] = useState<[number, number] | null>(null);
-//   const [isNavigating, setIsNavigating] = useState(false);
-//   const [currentPosition, setCurrentPosition] = useState<[number, number] | null>(null);
-//   const [route, setRoute] = useState<[number, number][]>([]);
-//   const [distance, setDistance] = useState<number>(0);
-//   const [duration, setDuration] = useState<number>(0);
-//   const [co2Emission, setCo2Emission] = useState<number>(0);
-//   const [error, setError] = useState<string | null>(null);
-//   const [isLoading, setIsLoading] = useState(false);
-//   const [routeInstructions, setRouteInstructions] = useState<any[]>([]);
-//   const [activeInstruction, setActiveInstruction] = useState<number>(0);
-  
-//   const mapRef = useRef<any>(null);
-//   const watchIdRef = useRef<number | null>(null);
-
-//   // Parse coordinate input
-//   const parseCoordinates = (coordString: string): [number, number] => {
-//     const coords = coordString.split(',').map(coord => parseFloat(coord.trim()));
-//     if (coords.length !== 2 || coords.some(isNaN)) {
-//       throw new Error('Invalid coordinates format. Please use "latitude, longitude"');
-//     }
-//     return [coords[0], coords[1]];
-//   };
-
-//   // Calculate CO2 emissions based on distance and vehicle type
-//   const calculateCO2 = (distance: number): number => {
-//     // Average CO2 emissions for a delivery truck (grams per km)
-//     const emissionsPerKm = 200;
-//     return (distance * emissionsPerKm) / 1000; // Convert to kg
-//   };
-
-//   // Get route from OSRM
-//   const getRoute = useCallback(async (start: [number, number], end: [number, number]) => {
-//     try {
-//       setIsLoading(true);
-//       const response = await fetch(
-//         `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?overview=full&geometries=geojson&steps=true`
-//       );
-//       const data = await response.json();
-      
-//       if (data.code !== 'Ok') {
-//         throw new Error('Could not calculate route');
-//       }
-
-//       const routeGeometry = data.routes[0].geometry.coordinates.map((coord: [number, number]) => [coord[1], coord[0]]);
-//       const routeDistance = data.routes[0].distance / 1000; // Convert to km
-//       const routeDuration = data.routes[0].duration / 60; // Convert to minutes
-      
-//       setRoute(routeGeometry);
-//       setDistance(routeDistance);
-//       setDuration(routeDuration);
-//       setCo2Emission(calculateCO2(routeDistance));
-//       setRouteInstructions(data.routes[0].legs[0].steps);
-      
-//       return routeGeometry;
-//     } catch (err) {
-//       console.error('Routing error:', err);
-//       setError('Failed to calculate route. Using straight line path.');
-//       // Fallback to straight line
-//       return [start, end];
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   }, []);
-
-//   // Start navigation
-//   const startNavigation = async () => {
-//     try {
-//       const startInput = (document.getElementById('start-coords') as HTMLInputElement).value;
-//       const endInput = (document.getElementById('end-coords') as HTMLInputElement).value;
-      
-//       const start = parseCoordinates(startInput);
-//       const end = parseCoordinates(endInput);
-      
-//       setStartCoords(start);
-//       setEndCoords(end);
-//       setError(null);
-//       setIsLoading(true);
-      
-//       // Calculate initial route
-//       await getRoute(start, end);
-      
-//       setIsNavigating(true);
-      
-//       // Start watching user's position
-//       if (navigator.geolocation) {
-//         watchIdRef.current = navigator.geolocation.watchPosition(
-//           async (position) => {
-//             const userPos: [number, number] = [
-//               position.coords.latitude,
-//               position.coords.longitude
-//             ];
-//             setCurrentPosition(userPos);
-            
-//             // Recalculate route from current position to destination
-//             if (end) {
-//               const newRoute = await getRoute(userPos, end);
-              
-//               // Find the closest point on the route to determine next instruction
-//               if (newRoute.length > 0 && routeInstructions.length > 0) {
-//                 let closestPointIndex = 0;
-//                 let minDistance = Infinity;
-                
-//                 newRoute.forEach((point, index) => {
-//                   const dist = Math.sqrt(
-//                     Math.pow(point[0] - userPos[0], 2) + 
-//                     Math.pow(point[1] - userPos[1], 2)
-//                   );
-//                   if (dist < minDistance) {
-//                     minDistance = dist;
-//                     closestPointIndex = index;
-//                   }
-//                 });
-                
-//                 // Determine which instruction is active based on progress
-//                 const progress = closestPointIndex / newRoute.length;
-//                 const activeIndex = Math.floor(progress * routeInstructions.length);
-//                 setActiveInstruction(activeIndex);
-//               }
-//             }
-//           },
-//           (err) => {
-//             console.error('Geolocation error:', err);
-//             setError('Unable to track your location. Please ensure location services are enabled.');
-//           },
-//           {
-//             enableHighAccuracy: true,
-//             maximumAge: 0,
-//             timeout: 5000,
-//           }
-//         );
-//       } else {
-//         setError('Geolocation is not supported by your browser.');
-//       }
-//     } catch (err) {
-//       setError(err instanceof Error ? err.message : 'Invalid coordinates');
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   };
-
-//   // Stop navigation
-//   const stopNavigation = () => {
-//     setIsNavigating(false);
-//     setCurrentPosition(null);
-//     if (watchIdRef.current) {
-//       navigator.geolocation.clearWatch(watchIdRef.current);
-//       watchIdRef.current = null;
-//     }
-//   };
-
-//   // Format time
-//   const formatTime = (minutes: number): string => {
-//     if (minutes < 60) return `${Math.round(minutes)} min`;
-//     const hours = Math.floor(minutes / 60);
-//     const mins = Math.round(minutes % 60);
-//     return `${hours}h ${mins}m`;
-//   };
-
-//   return (
-//     <div className="min-h-screen bg-gray-100">
-//       <div className="container mx-auto px-4 py-6">
-//         <div className="flex flex-col lg:flex-row gap-6">
-//           {/* Sidebar */}
-//           <div className="w-full lg:w-96 bg-white rounded-xl shadow-md overflow-hidden">
-//             <div className="p-6">
-//               <h1 className="text-2xl font-bold text-gray-800 mb-6">
-//                 <span className="text-blue-600">Warehouse</span> to <span className="text-red-600">Store</span> Navigation
-//               </h1>
-              
-//               {error && (
-//                 <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded">
-//                   <p>{error}</p>
-//                 </div>
-//               )}
-              
-//               <div className="space-y-4">
-//                 <div>
-//                   <label htmlFor="start-coords" className="block text-sm font-medium text-gray-700 mb-1">
-//                     Warehouse Location (lat, lng)
-//                   </label>
-//                   <input
-//                     id="start-coords"
-//                     type="text"
-//                     placeholder="e.g., 40.7128, -74.0060"
-//                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//                     disabled={isNavigating || isLoading}
-//                   />
-//                 </div>
-                
-//                 <div>
-//                   <label htmlFor="end-coords" className="block text-sm font-medium text-gray-700 mb-1">
-//                     Store Location (lat, lng)
-//                   </label>
-//                   <input
-//                     id="end-coords"
-//                     type="text"
-//                     placeholder="e.g., 34.0522, -118.2437"
-//                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//                     disabled={isNavigating || isLoading}
-//                   />
-//                 </div>
-                
-//                 {!isNavigating ? (
-//                   <button
-//                     onClick={startNavigation}
-//                     disabled={isLoading}
-//                     className={`w-full py-3 px-4 rounded-lg text-white font-medium transition-colors ${isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
-//                   >
-//                     {isLoading ? (
-//                       <span className="flex items-center justify-center">
-//                         <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-//                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-//                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-//                         </svg>
-//                         Calculating route...
-//                       </span>
-//                     ) : 'Start Navigation'}
-//                   </button>
-//                 ) : (
-//                   <button
-//                     onClick={stopNavigation}
-//                     className="w-full py-3 px-4 bg-red-600 hover:bg-red-700 rounded-lg text-white font-medium transition-colors"
-//                   >
-//                     Stop Navigation
-//                   </button>
-//                 )}
-//               </div>
-              
-//               {(isNavigating || isLoading) && (
-//                 <div className="mt-6 space-y-4">
-//                   <div className="bg-blue-50 p-4 rounded-lg">
-//                     <h3 className="text-lg font-semibold text-blue-800 mb-2">Route Summary</h3>
-//                     <div className="grid grid-cols-3 gap-2 text-center">
-//                       <div className="bg-white p-2 rounded">
-//                         <p className="text-sm text-gray-500">Distance</p>
-//                         <p className="font-bold">{distance.toFixed(1)} km</p>
-//                       </div>
-//                       <div className="bg-white p-2 rounded">
-//                         <p className="text-sm text-gray-500">Duration</p>
-//                         <p className="font-bold">{formatTime(duration)}</p>
-//                       </div>
-//                       <div className="bg-white p-2 rounded">
-//                         <p className="text-sm text-gray-500">CO₂ Emissions</p>
-//                         <p className="font-bold">{co2Emission.toFixed(1)} kg</p>
-//                       </div>
-//                     </div>
-//                   </div>
-                  
-//                   {routeInstructions.length > 0 && (
-//                     <div className="bg-gray-50 p-4 rounded-lg">
-//                       <h3 className="text-lg font-semibold text-gray-800 mb-2">Next Steps</h3>
-//                       <div className="space-y-2 max-h-60 overflow-y-auto">
-//                         {routeInstructions.map((step: any, index: number) => (
-//                           <div 
-//                             key={index} 
-//                             className={`p-3 rounded ${index === activeInstruction ? 'bg-blue-100 border-l-4 border-blue-500' : 'bg-white'}`}
-//                           >
-//                             <p className={`font-medium ${index === activeInstruction ? 'text-blue-800' : 'text-gray-700'}`}>
-//                               {step.maneuver.instruction}
-//                             </p>
-//                             <p className="text-sm text-gray-500">
-//                               {step.distance > 1000 
-//                                 ? `${(step.distance / 1000).toFixed(1)} km` 
-//                                 : `${Math.round(step.distance)} m`}
-//                             </p>
-//                           </div>
-//                         ))}
-//                       </div>
-//                     </div>
-//                   )}
-                  
-//                   {currentPosition && (
-//                     <div className="bg-green-50 p-4 rounded-lg">
-//                       <h3 className="text-lg font-semibold text-green-800 mb-2">Current Position</h3>
-//                       <p className="font-mono text-gray-700">
-//                         {currentPosition[0].toFixed(6)}, {currentPosition[1].toFixed(6)}
-//                       </p>
-//                     </div>
-//                   )}
-//                 </div>
-//               )}
-//             </div>
-//           </div>
-          
-//           {/* Map Area */}
-//           <div className="flex-1">
-//             <div className="bg-white rounded-xl shadow-md overflow-hidden h-full">
-//               {typeof window !== 'undefined' && (
-//                 <MapContainer
-//                   center={[40, -100]}
-//                   zoom={4}
-//                   style={{ height: '100%', width: '100%' }}
-//                   whenCreated={(map) => { mapRef.current = map }}
-//                   className="z-0"
-//                 >
-//                   <TileLayer
-//                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-//                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-//                   />
-                  
-//                   {startCoords && (
-//                     <Marker position={startCoords} icon={warehouseIcon}>
-//                       <Popup className="font-semibold">Warehouse Location</Popup>
-//                     </Marker>
-//                   )}
-                  
-//                   {endCoords && (
-//                     <Marker position={endCoords} icon={storeIcon}>
-//                       <Popup className="font-semibold">Store Location</Popup>
-//                     </Marker>
-//                   )}
-                  
-//                   {currentPosition && (
-//                     <Marker position={currentPosition} icon={userIcon}>
-//                       <Popup className="font-semibold">Your Location</Popup>
-//                     </Marker>
-//                   )}
-                  
-//                   {route.length > 0 && (
-//                     <RoutingMachine 
-//                       waypoints={route}
-//                       color="#3b82f6"
-//                       weight={5}
-//                       opacity={0.7}
-//                     />
-//                   )}
-//                 </MapContainer>
-//               )}
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default WarehouseToStore;
