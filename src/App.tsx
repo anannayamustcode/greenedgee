@@ -8,7 +8,7 @@ import SignUp from './pages/SignUp';
 import WarehouseToStore from './pages/WarehouseToStore';
 import VenderToWarehousePage from './pages/VenderToWarehousePage';
 import Customer from './pages/Customer';
-import Feedback from './pages/Feedback';
+import FeedbackForm from './pages/Feedback';
 import StoreToCustomer from './pages/StoreToCustomer';
 import './App.css';
 import Navbar from './components/Navbar';
@@ -29,7 +29,7 @@ const App: React.FC = () => {
         <Route path="/VenderToWarehousePage" element={<VenderToWarehousePage />} />
         <Route path="/WarehouseToStore" element={<WarehouseToStore />} />
         <Route path="/customer" element={<Customer />} />
-        <Route path="/feedback" element={<Feedback />} />
+        <Route path="/feedback" element={<FeedbackForm />} />
         <Route path="/StoreToCustomer" element={<StoreToCustomer/>} />
         <Route path="/driver" element={<Driver />} />
         <Route path="/getstarted" element={<Start />} />
