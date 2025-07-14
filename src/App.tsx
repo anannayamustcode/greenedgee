@@ -13,7 +13,7 @@ import StoreToCustomer from './pages/StoreToCustomer';
 import './App.css';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
-
+import Driver from './pages/Driver';
 const App: React.FC = () => {
   return (
     <div className="min-h-screen">
@@ -29,6 +29,7 @@ const App: React.FC = () => {
         <Route path="/customer" element={<Customer />} />
         <Route path="/feedback" element={<Feedback />} />
         <Route path="/StoreToCustomer" element={<StoreToCustomer/>} />
+        <Route path="/driver" element={<Driver />} />
       </Routes>
       <Footer/>
     </div>

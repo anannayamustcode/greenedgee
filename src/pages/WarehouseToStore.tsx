@@ -177,7 +177,7 @@ const VendorWarehouseManagement = () => {
   );
 
   return (
-    <div className="mt-10 min-h-screen bg-gradient-to-br from-blue-50 to-yellow-50 p-4">
+    <div className="mt-16 min-h-screen bg-gradient-to-br from-blue-50 to-yellow-50 p-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">

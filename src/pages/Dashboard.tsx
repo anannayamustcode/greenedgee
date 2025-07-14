@@ -164,7 +164,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="mt-10 min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50">
+    <div className="mt-10 min-h-screen bg-white">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-yellow-500 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
