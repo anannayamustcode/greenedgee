@@ -374,7 +374,53 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
               <div className="space-y-4">
                 {!initialStartCoords && (
                   <div>
-                    <label htmlFor="start-coords" className="block text-sm font-medium text-gray-700 mb-1">
+{/* Fuel Type Selector */}
+<label htmlFor="fuel-type" className="block text-sm font-medium text-gray-700 mb-1">
+  Fuel Type
+</label>
+<select
+  id="fuel-type"
+  className="mb-4 w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+  disabled={isNavigating || isLoading}
+>
+  <option value="">Select fuel type</option>
+  <option value="petrol">Petrol</option>
+  <option value="diesel">Diesel</option>
+  <option value="electric">Electric</option>
+  <option value="hybrid">Hybrid</option>
+</select>
+
+{/* Load Weight Selector */}
+<label htmlFor="load-weight" className="block text-sm font-medium text-gray-700 mb-1">
+  Load Weight (kg)
+</label>
+<select
+  id="load-weight"
+  className="mb-4 w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+  disabled={isNavigating || isLoading}
+>
+  <option value="">Select weight</option>
+  {Array.from({ length: 11 }, (_, i) => i * 100).map((weight) => (
+    <option key={weight} value={weight}>{weight} kg</option>
+  ))}
+</select>
+
+{/* Vehicle Type Selector */}
+<label htmlFor="vehicle-type" className="block text-sm font-medium text-gray-700 mb-1">
+  Vehicle Type
+</label>
+<select
+  id="vehicle-type"
+  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+  disabled={isNavigating || isLoading}
+>
+  <option value="">Select vehicle</option>
+  <option value="truck">Truck</option>
+  <option value="car">Car</option>
+  <option value="bike">Bike</option>
+  <option value="van">Van</option>
+</select>
+                    <label htmlFor="start-coords" className="mt-1 block text-sm font-medium text-gray-700 mb-1">
                       {startLabel} Location (lat, lng)
                     </label>
                     <input
@@ -447,30 +493,7 @@ const WarehouseToStore: React.FC<WarehouseToStoreProps> = ({
                       </div>
                     </div>
                   </div>
-                  
-                  {routeInstructions.length > 0 && (
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <h3 className="text-lg font-semibold text-gray-800 mb-2">Next Steps</h3>
-                      <div className="space-y-2 max-h-60 overflow-y-auto">
-                        {routeInstructions.map((step: any, index: number) => (
-                          <div 
-                            key={index} 
-                            className={`p-3 rounded ${index === activeInstruction ? 'bg-blue-100 border-l-4 border-blue-500' : 'bg-white'}`}
-                          >
-                            <p className={`font-medium ${index === activeInstruction ? 'text-blue-800' : 'text-gray-700'}`}>
-                              {step.maneuver.instruction}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              {step.distance > 1000 
-                                ? `${(step.distance / 1000).toFixed(1)} km` 
-                                : `${Math.round(step.distance)} m`}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
+
                   {currentPosition && (
                     <div className="bg-green-50 p-4 rounded-lg">
                       <h3 className="text-lg font-semibold text-green-800 mb-2">Current Position</h3>

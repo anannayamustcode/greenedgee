@@ -88,8 +88,8 @@ const [restockRecommendations, setRestockRecommendations] = useState<any[]>([]);
       const data = await response.json();
 
       if (response.ok) {
-        setForecastData(data.forecast);
-        setRestockRecommendations(data.categories_to_restock);
+        setForecastData(Array.isArray(data.forecast) ? data.forecast : []);
+        setRestockRecommendations(Array.isArray(data.categories_to_restock) ? data.categories_to_restock : []);
         
         // Transform data for charts
         const performanceData = data.store_performance.map((store: any) => ({
@@ -511,21 +511,25 @@ const [restockRecommendations, setRestockRecommendations] = useState<any[]>([]);
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard 
           title="Total Sales" 
-          value={forecastData.length > 0 ? `$${(forecastData.reduce((sum, item) => sum + (item.actual || item.forecast), 0) / 1000000).toFixed(1)}M` : "$0"} 
+          value={Array.isArray(forecastData) && forecastData.length > 0
+            ? `$${(forecastData.reduce((sum, item) => sum + (item.actual || item.forecast), 0) / 1000000).toFixed(1)}M`
+            : "$0"}
           icon={DollarSign} 
           trend={12.5}
           color="blue"
         />
         <StatCard 
           title="Active Stores" 
-          value={storePerformanceData.length.toString()} 
+          value={Array.isArray(storePerformanceData) ? storePerformanceData.length.toString() : "0"}
           icon={Store} 
           trend={0}
           color="yellow"
         />
         <StatCard 
           title="Total Orders" 
-          value={storePerformanceData.length > 0 ? storePerformanceData.reduce((sum, store) => sum + store.orders, 0).toLocaleString() : "0"} 
+          value={Array.isArray(storePerformanceData) && storePerformanceData.length > 0
+            ? storePerformanceData.reduce((sum, store) => sum + store.orders, 0).toLocaleString()
+            : "0"}
           icon={ShoppingCart} 
           trend={8.3}
           color="blue"
@@ -533,10 +537,10 @@ const [restockRecommendations, setRestockRecommendations] = useState<any[]>([]);
         <StatCard 
           title="Avg. Order Value" 
           value={
-            storePerformanceData.length > 0
+            Array.isArray(storePerformanceData) && storePerformanceData.length > 0
               ? `$${Math.round(
                   storePerformanceData.reduce((sum, store) => sum + store.sales, 0) /
-                  storePerformanceData.reduce((sum, store) => sum + store.orders, 0)
+                  (storePerformanceData.reduce((sum, store) => sum + store.orders, 0) || 1)
                 )}`
               : "$0"
           }
