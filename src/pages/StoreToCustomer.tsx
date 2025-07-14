@@ -148,7 +148,7 @@ const StoreToCustomer: React.FC = () => {
 
   if (!deliveryData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-yellow-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-700 to-blue-500">
         <div className="text-center p-6 bg-white rounded-xl shadow-lg max-w-md">
           <div className="text-yellow-500 mb-4">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -188,7 +188,7 @@ const StoreToCustomer: React.FC = () => {
   );
 
   return (
-    <div className="mt-10 min-h-screen bg-gradient-to-br from-blue-50 to-yellow-50 p-4">
+    <div className="mt-15 min-h-screen bg-gradient-to-br from-blue-50 to-yellow-50 p-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
@@ -234,7 +234,7 @@ const StoreToCustomer: React.FC = () => {
           {activeTab === 'delivery' && (
             <div id="delivery-tabpanel" aria-labelledby="delivery-tab" className="space-y-6">
               {/* Status Banner */}
-              <div className="bg-gradient-to-r from-blue-600 to-yellow-500 text-white p-6 rounded-2xl shadow-lg">
+              <div className="bg-gradient-to-r  from-blue-700 to-blue-500 text-white p-6 rounded-2xl shadow-lg">
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-2xl font-bold mb-2">Your Order is {deliveryData.status}</h2>
@@ -298,7 +298,7 @@ const StoreToCustomer: React.FC = () => {
                     
                     <button 
                       onClick={() => setShowMap(!showMap)}
-                      className="w-full bg-gradient-to-r from-blue-600 to-yellow-500 text-white px-4 py-3 rounded-lg hover:from-blue-700 hover:to-yellow-600 transition-all font-medium flex items-center justify-center"
+                      className="w-full bg-gradient-to-r  from-blue-700 to-blue-500 text-white px-4 py-3 rounded-lg hover:from-blue-700 hover:to-yellow-600 transition-all font-medium flex items-center justify-center"
                     >
                       <MapPin className="w-4 h-4 mr-2" />
                       {showMap ? 'Hide Map' : 'View Live Location'}
@@ -417,7 +417,7 @@ const StoreToCustomer: React.FC = () => {
                   
                   <div className="text-center">
                     <p className="text-blue-600 mb-4">Need assistance with your order?</p>
-                    <button className="bg-gradient-to-r from-blue-600 to-yellow-500 text-white px-6 py-3 rounded-lg hover:from-blue-700 hover:to-yellow-600 transition-all font-medium">
+                    <button className="bg-gradient-to-r  from-blue-700 to-blue-500 text-white px-6 py-3 rounded-lg hover:from-blue-700 hover:to-yellow-600 transition-all font-medium">
                       Contact Support
                     </button>
                   </div>

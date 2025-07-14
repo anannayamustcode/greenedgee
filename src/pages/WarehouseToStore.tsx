@@ -268,9 +268,9 @@ const VendorWarehouseManagement = () => {
 
                     <button 
                       onClick={() => setSelectedItem(item)}
-                      className="w-full bg-gradient-to-r from-blue-600 to-yellow-500 text-white py-2 rounded-lg hover:from-blue-700 hover:to-yellow-600 transition-all font-medium flex items-center justify-center"
+                      className="w-full bg-blue-600 text-white py-2 rounded-lg hover:from-blue-700 hover:to-yellow-600 transition-all font-medium flex items-center justify-center"
                     >
-                      <Eye className="w-4 h-4 mr-2" />
+                      {/* <Eye className="w-4 h-4 mr-2" /> */}
                       View Details
                     </button>
                   </div>
@@ -378,7 +378,7 @@ const VendorWarehouseManagement = () => {
         {/* AI Suggestions Tab */}
         {activeTab === 'ai' && (
           <div className="space-y-6">
-            <div className="bg-gradient-to-r from-blue-600 to-yellow-500 text-white p-6 rounded-2xl shadow-lg">
+            <div className="bg-gradient-to-r from-blue-800 to-blue-500 text-white p-6 rounded-2xl shadow-lg">
               <h3 className="text-2xl font-bold mb-2">AI-Powered Insights</h3>
               <p className="opacity-90">Smart recommendations to optimize your inventory management</p>
             </div>
@@ -451,7 +451,7 @@ const VendorWarehouseManagement = () => {
                 </h3>
                 <div className="space-y-4">
                   <div>
-                    <h4 className="font-bold text-blue-800 text-lg">{vendorData.name}</h4>
+                    <h4 className="font-bold text-blue-800 text-lg mr-10">{vendorData.name}</h4>
                     <div className="flex items-center mt-1">
                       <Star className="w-4 h-4 text-yellow-500 mr-1" />
                       <span className="text-blue-600">{vendorData.rating}/5</span>
@@ -468,7 +468,7 @@ const VendorWarehouseManagement = () => {
                     </div>
                   </div>
                   <div>
-                    <h5 className="font-medium text-blue-800 mb-2">Specialties:</h5>
+                    <h5 className="font-medium text-blue-800 mb-2 mr-118">Specialties:</h5>
                     <div className="flex flex-wrap gap-2">
                       {vendorData.specialties.map((specialty, index) => (
                         <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">

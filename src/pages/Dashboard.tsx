@@ -164,44 +164,12 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="mt-10 min-h-screen bg-white">
+    <div className="mt-15 min-h-screen bg-white">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-yellow-500 text-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between py-4">
-            <div className="flex items-center space-x-4">
-              <div className="bg-blue bg-opacity-20 p-2 rounded-lg">
-                <ShoppingCart className="w-8 h-8" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold">Walmart Sales Forecasting</h1>
-                <p className="text-blue-100">Advanced Analytics Dashboard</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={exportData}
-                className="bg-blue bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                <span>Export</span>
-              </button>
-              <div className="relative">
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={handleFileUpload}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                />
-                <button className="bg-blue bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors">
-                  <Upload className="w-4 h-4" />
-                  <span>Upload Data</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+{/* Header */}
+
+
+
 
       {/* Alert Banner */}
       {showAlert && (
@@ -236,9 +204,33 @@ const Dashboard = () => {
 
         {/* Controls Panel */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-          <div className="flex items-center space-x-2 mb-4">
-            <Filter className="w-5 h-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-800">Filter Controls</h2>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-2">
+              <Filter className="w-5 h-5 text-blue-600" />
+              <h2 className="text-lg font-semibold text-gray-800">Filter Controls</h2>
+            </div>
+            {/* Export & Import Buttons - moved here */}
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={exportData}
+                className="border border-gray-300 text-black px-4 py-2 rounded-md flex items-center space-x-2 hover:bg-gray-100 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                <span>Export</span>
+              </button>
+              <div className="relative">
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleFileUpload}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <button className="border border-gray-300 text-black px-4 py-2 rounded-md flex items-center space-x-2 hover:bg-gray-100 transition-colors">
+                  <Upload className="w-4 h-4" />
+                  <span>Upload</span>
+                </button>
+              </div>
+            </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
             <div>
